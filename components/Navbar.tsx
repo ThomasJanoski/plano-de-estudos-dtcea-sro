@@ -4,21 +4,42 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { GraduationCap, LogIn, LogOut, User } from 'lucide-react';
+import { GraduationCap, LogIn, LogOut, User, ShieldAlert } from 'lucide-react';
 
 export function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
+    async function fetchUserRole(userId: string) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      setRole(data?.role ?? null);
+    }
+
     // 1. Checa a sessão atual
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        fetchUserRole(currentUser.id);
+      }
     });
 
     // 2. Escuta mudanças (login/logout) em tempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        fetchUserRole(currentUser.id);
+      } else {
+        setRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -26,6 +47,8 @@ export function Navbar() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
     window.location.href = '/login';
   }
 
@@ -39,11 +62,25 @@ export function Navbar() {
 
         <div>
           {user ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Botão exclusivo de Administrador */}
+              {role === 'admin' && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 text-xs font-semibold uppercase tracking-wider transition-colors"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Painel Admin</span>
+                </Link>
+              )}
+
+              {/* Informações do Militar */}
               <span className="text-xs text-slate-300 hidden sm:flex items-center gap-1.5 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
                 <User className="w-3.5 h-3.5 text-blue-400" />
                 {user.user_metadata?.full_name || user.email}
               </span>
+
+              {/* Botão de Logout */}
               <button
                 onClick={handleLogout}
                 className="text-xs text-slate-400 hover:text-red-400 flex items-center gap-1.5 py-1.5 px-3 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer"

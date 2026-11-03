@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -11,12 +11,11 @@ import {
   Loader2,
   AlertCircle,
   X,
-  Send,
-  HelpCircle,
   CheckCircle2,
   ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
+import AIChatModal from '@/components/AIChatModal';
 
 interface Material {
   id: string;
@@ -30,11 +29,6 @@ interface Course {
   title: string;
   slug: string;
   description: string;
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  text: string;
 }
 
 function CourseContent() {
@@ -55,17 +49,6 @@ function CourseContent() {
   // Estados dos Modais
   const [selectedPdfMaterial, setSelectedPdfMaterial] = useState<Material | null>(null);
   const [selectedAiMaterial, setSelectedAiMaterial] = useState<Material | null>(null);
-
-  // Estados do Chat da IA
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Scroll automático para última mensagem do chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, chatLoading]);
 
   // Carregar dados iniciais (Curso, Materiais, Usuário e Progresso)
   useEffect(() => {
@@ -132,7 +115,7 @@ function CourseContent() {
     if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
       return fileUrl;
     }
-    const { data } = supabase.storage.from('materiais').getPublicUrl(fileUrl);
+    const { data } = supabase.storage.from('materials').getPublicUrl(fileUrl);
     return data.publicUrl;
   }
 
@@ -170,51 +153,6 @@ function CourseContent() {
       alert('Não foi possível salvar o progresso: ' + err.message);
     } finally {
       setUpdatingProgress(false);
-    }
-  }
-
-  // Abrir Modal de IA e inicializar o chat
-  function openAiModal(material: Material) {
-    setSelectedAiMaterial(material);
-    setChatMessages([
-      {
-        role: 'assistant',
-        text: `Na escuta, combatente! Sou seu Instrutor IA para a matéria **"${material.title}"**. Como posso orientar sua instrução hoje?`,
-      },
-    ]);
-  }
-
-  // Enviar mensagem para a API do Gemini
-  async function handleSendAiMessage(customText?: string) {
-    const textToSend = customText || chatInput;
-    if (!textToSend.trim() || chatLoading || !selectedAiMaterial) return;
-
-    const userMsg: ChatMessage = { role: 'user', text: textToSend };
-    setChatMessages((prev) => [...prev, userMsg]);
-    setChatInput('');
-    setChatLoading(true);
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          materialTitle: selectedAiMaterial.title,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro na resposta do servidor.');
-
-      setChatMessages((prev) => [...prev, { role: 'assistant', text: data.reply }]);
-    } catch (err: any) {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: 'assistant', text: `❌ Falha de transmissão: ${err.message}` },
-      ]);
-    } finally {
-      setChatLoading(false);
     }
   }
 
@@ -327,7 +265,7 @@ function CourseContent() {
                   </button>
 
                   <button 
-                    onClick={() => openAiModal(mat)}
+                    onClick={() => setSelectedAiMaterial(mat)}
                     className="px-3 py-2 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" /> Estudar com IA
@@ -417,95 +355,13 @@ function CourseContent() {
         </div>
       )}
 
-      {/* MODAL 2: ASSISTENTE DE IA */}
+      {/* MODAL 2: ASSISTENTE DE IA (Usando o componente modular formatado) */}
       {selectedAiMaterial && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl h-[85vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl">
-            {/* Topo do Modal */}
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-              <div className="flex items-center gap-2 truncate pr-4">
-                <Sparkles className="w-5 h-5 text-purple-400 shrink-0" />
-                <div className="truncate">
-                  <h3 className="font-bold text-white text-sm">Instrutor IA - FAB</h3>
-                  <p className="text-[11px] text-slate-400 truncate">{selectedAiMaterial.title}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setSelectedAiMaterial(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Chat / Área de Interação */}
-            <div className="flex-1 bg-slate-950 p-4 overflow-y-auto space-y-3">
-              {chatMessages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] rounded-xl px-4 py-2.5 text-xs sm:text-sm whitespace-pre-wrap leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-purple-600 text-white rounded-br-none'
-                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none shadow'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-
-              {chatLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-900 border border-slate-800 text-slate-400 px-4 py-2 rounded-xl text-xs flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                    Instrutor redigindo resposta técnica...
-                  </div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Sugestões Rápidas de Estudo */}
-            <div className="p-2 bg-slate-900 border-t border-slate-800 flex gap-2 overflow-x-auto text-xs">
-              <button
-                onClick={() => handleSendAiMessage('Gere um simulado com 3 questões de múltipla escolha desta apostila com gabarito ao final.')}
-                disabled={chatLoading}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg whitespace-nowrap transition cursor-pointer border border-slate-700/60"
-              >
-                📝 Gerar Simulado
-              </button>
-              <button
-                onClick={() => handleSendAiMessage('Faça um resumo dos 4 tópicos mais importantes desta apostila para a prova.')}
-                disabled={chatLoading}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg whitespace-nowrap transition cursor-pointer border border-slate-700/60"
-              >
-                📌 Resumo dos Pontos-Chave
-              </button>
-            </div>
-
-            {/* Input de Pergunta */}
-            <div className="p-3 border-t border-slate-800 bg-slate-950 flex items-center gap-2">
-              <input 
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendAiMessage()}
-                placeholder="Tire dúvidas sobre a apostila com o instrutor..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
-              />
-              <button 
-                onClick={() => handleSendAiMessage()}
-                disabled={chatLoading || !chatInput.trim()}
-                className="p-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl transition-colors cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <AIChatModal
+          isOpen={!!selectedAiMaterial}
+          onClose={() => setSelectedAiMaterial(null)}
+          materialTitle={selectedAiMaterial.title}
+        />
       )}
     </main>
   );
