@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 import AdminQuizModal from '@/components/AdminQuizModal'
 import AdminTopicsModal from '@/components/AdminTopicsModal'
+import { Trophy } from 'lucide-react'
+import AdminFinalExamModal from '@/components/AdminFinalExamModal'
 
 interface Material {
   id: string
@@ -68,6 +70,8 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
   // Sistema de Notificações e Confirmação
   const [toast, setToast] = useState<ToastNotification | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null)
+
+  const [isFinalExamModalOpen, setIsFinalExamModalOpen] = useState(false)
 
   function showToast(type: ToastNotification['type'], title: string, message: string) {
     setToast({ type, title, message })
@@ -381,15 +385,14 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in fade-in slide-in-from-bottom-5 duration-300">
           <div
-            className={`p-4 rounded-xl border backdrop-blur-md shadow-2xl flex items-start gap-3 ${
-              toast.type === 'success'
-                ? 'bg-slate-900/95 border-emerald-500/50 text-emerald-300 shadow-emerald-950/40'
-                : toast.type === 'error'
+            className={`p-4 rounded-xl border backdrop-blur-md shadow-2xl flex items-start gap-3 ${toast.type === 'success'
+              ? 'bg-slate-900/95 border-emerald-500/50 text-emerald-300 shadow-emerald-950/40'
+              : toast.type === 'error'
                 ? 'bg-slate-900/95 border-red-500/50 text-red-300 shadow-red-950/40'
                 : toast.type === 'warning'
-                ? 'bg-slate-900/95 border-amber-500/50 text-amber-300 shadow-amber-950/40'
-                : 'bg-slate-900/95 border-blue-500/50 text-blue-300 shadow-blue-950/40'
-            }`}
+                  ? 'bg-slate-900/95 border-amber-500/50 text-amber-300 shadow-amber-950/40'
+                  : 'bg-slate-900/95 border-blue-500/50 text-blue-300 shadow-blue-950/40'
+              }`}
           >
             <div className="shrink-0 mt-0.5">
               {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
@@ -417,11 +420,10 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
               <div
-                className={`p-2 rounded-lg ${
-                  confirmDialog.isDestructive
-                    ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                }`}
+                className={`p-2 rounded-lg ${confirmDialog.isDestructive
+                  ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}
               >
                 <AlertTriangle className="w-5 h-5" />
               </div>
@@ -446,11 +448,10 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
               <button
                 type="button"
                 onClick={confirmDialog.onConfirm}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-lg transition-all cursor-pointer ${
-                  confirmDialog.isDestructive
-                    ? 'bg-red-600 hover:bg-red-500 shadow-red-950/50'
-                    : 'bg-blue-600 hover:bg-blue-500 shadow-blue-950/50'
-                }`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold text-white shadow-lg transition-all cursor-pointer ${confirmDialog.isDestructive
+                  ? 'bg-red-600 hover:bg-red-500 shadow-red-950/50'
+                  : 'bg-blue-600 hover:bg-blue-500 shadow-blue-950/50'
+                  }`}
               >
                 {confirmDialog.confirmText || 'Confirmar Ação'}
               </button>
@@ -482,7 +483,7 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
             {Math.round(
               (((isBatchQuizGenerating ? batchQuizProgress?.current : batchTopicsProgress?.current) || 1) /
                 ((isBatchQuizGenerating ? batchQuizProgress?.total : batchTopicsProgress?.total) || 1)) *
-                100
+              100
             )}
             %
           </span>
@@ -602,6 +603,18 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
                   <Zap className="w-3.5 h-3.5 text-amber-300" />
                   <span>Gerar Todas as Provas (IA)</span>
                 </button>
+
+                {/* Botão Prova Final VF */}
+                <button
+                  type="button"
+                  onClick={() => setIsFinalExamModalOpen(true)}
+                  disabled={isAnyBatchRunning}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all shadow-md shadow-amber-950 cursor-pointer"
+                  title="Configurar a Verificação Final Geral do Curso"
+                >
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span>Prova Final do Curso (VF)</span>
+                </button>
               </div>
             )}
           </div>
@@ -697,11 +710,10 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
             <div className="space-y-3">
               <label
                 onClick={() => setBatchTopicsMode('only_missing')}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  batchTopicsMode === 'only_missing'
-                    ? 'border-emerald-500 bg-emerald-950/40 text-white'
-                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
-                }`}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${batchTopicsMode === 'only_missing'
+                  ? 'border-emerald-500 bg-emerald-950/40 text-white'
+                  : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                  }`}
               >
                 <input
                   type="radio"
@@ -722,11 +734,10 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
 
               <label
                 onClick={() => setBatchTopicsMode('overwrite_all')}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  batchTopicsMode === 'overwrite_all'
-                    ? 'border-red-500/80 bg-red-950/30 text-white'
-                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
-                }`}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${batchTopicsMode === 'overwrite_all'
+                  ? 'border-red-500/80 bg-red-950/30 text-white'
+                  : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                  }`}
               >
                 <input
                   type="radio"
@@ -792,11 +803,10 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
             <div className="space-y-3">
               <label
                 onClick={() => setBatchQuizMode('only_missing')}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  batchQuizMode === 'only_missing'
-                    ? 'border-indigo-500 bg-indigo-950/40 text-white'
-                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
-                }`}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${batchQuizMode === 'only_missing'
+                  ? 'border-indigo-500 bg-indigo-950/40 text-white'
+                  : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                  }`}
               >
                 <input
                   type="radio"
@@ -817,11 +827,10 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
 
               <label
                 onClick={() => setBatchQuizMode('overwrite_all')}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  batchQuizMode === 'overwrite_all'
-                    ? 'border-red-500/80 bg-red-950/30 text-white'
-                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
-                }`}
+                className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${batchQuizMode === 'overwrite_all'
+                  ? 'border-red-500/80 bg-red-950/30 text-white'
+                  : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                  }`}
               >
                 <input
                   type="radio"
@@ -893,6 +902,20 @@ export default function AdminDashboardClient({ initialCourses }: { initialCourse
           material={selectedMaterialForTopics}
           course={activeCourse}
           onClose={() => setSelectedMaterialForTopics(null)}
+        />
+      )}
+
+      {/* MODAL DA PROVA FINAL DO CURSO (VF) */}
+      {isFinalExamModalOpen && activeCourse && (
+        <AdminFinalExamModal
+          course={activeCourse}
+          isOpen={isFinalExamModalOpen}
+          onClose={() => setIsFinalExamModalOpen(false)}
+          onSaved={() => {
+            setIsFinalExamModalOpen(false)
+            showToast('success', 'Verificação Final Atualizada', 'A Prova Final do curso foi salva com sucesso!')
+            router.refresh()
+          }}
         />
       )}
     </>
