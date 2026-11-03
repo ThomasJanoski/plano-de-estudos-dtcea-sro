@@ -1,10 +1,17 @@
+// app/admin/page.tsx
+import { connection } from 'next/server'
 import { requireAdmin } from '@/lib/auth-admin'
 import AdminDashboardClient from '@/components/AdminDashboardClient'
 
+export const instant = false
+
 export default async function AdminPage() {
+  // Avisa ao Next.js 16 que a página só deve ser executada quando houver uma requisição real
+  await connection()
+
   const { supabase } = await requireAdmin()
 
-  // Buscar os cursos e as apostilas já cadastradas
+  // Buscar os cursos e as apostilas cadastradas
   const { data: courses } = await supabase
     .from('courses')
     .select(`
